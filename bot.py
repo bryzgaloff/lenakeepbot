@@ -1,20 +1,27 @@
 #!env/bin/python
 
 import re
+import logging
+import sys
 
-from telebot import TeleBot
+import telebot
 
 from lkb_redis import LKBRedis
 
-bot = TeleBot(LKBRedis().get('bot_token'))
-
 TAG_EXACT_REGEX = re.compile(r'^[#/]\S+$')
 HASH_TAG_REGEX = re.compile(r'#\S+')
-SECONDS_PER_WEEK = 60 * 60 * 24 * 7
+SECONDS_PER_DAY = 60 * 60 * 24 * 7
+
+logger = logging.getLogger('LKB')
+logger.setLevel(logging.INFO)
+logger.addHandler(logging.StreamHandler(sys.stdout))
+
+bot = telebot.TeleBot(LKBRedis().get('bot_token'))
 
 
 @bot.message_handler(commands=['tags'])
 def show_tags_list(message):
+    logger.info('Tags command, user_id='.format(message.from_user.id))
     bot.send_message(
         message.from_user.id,
         '\n'.join(
@@ -25,11 +32,8 @@ def show_tags_list(message):
 
 @bot.message_handler(func=lambda msg: TAG_EXACT_REGEX.match(msg.text))
 def show_messages_by_tag(message):
-    tag_match = TAG_EXACT_REGEX.search(message.text)
-    if tag_match is None:
-        bot.send_message(message.from_user.id, 'Unknown tag format, sorry.')
-        return
-    tag = tag_match.group(0)[1:]
+    logger.info('Show messages, user_id={}'.format(message.from_user.id))
+    tag = TAG_EXACT_REGEX.search(message.text).group(0)[1:]
     redis_conn = LKBRedis()
     notes_set_key = redis_conn.hget(message.from_user.id, tag)
     notes = []
@@ -44,13 +48,16 @@ def show_messages_by_tag(message):
         bot.send_message(
             message.from_user.id,
             'Sorry, there are now notes for #{} tag.'.format(tag))
+        logger.info('No notes for tag #{}'.format(tag))
         redis_conn.hdel(message.from_user.id, tag)
     else:
         bot.send_message(message.from_user.id, '\n-----\n'.join(notes))
+        logger.info('Success')
 
 
 @bot.message_handler()
 def text_handler(message):
+    logger.info('New note, user_id={}'.format(message.from_user.id))
     redis_conn = LKBRedis()
     tags = HASH_TAG_REGEX.findall(message.text)
     if '#tags' in tags:
@@ -58,16 +65,18 @@ def text_handler(message):
             message.from_user.id,
             'Sorry, you cannot use tag #tags, '
             'because it is reserved for /tags command.')
+        logger.info('#tags tag')
         return
     if not tags:
         bot.send_message(
             message.from_user.id,
             'Sorry, no tags have been parsed in your msg.')
+        logger.info('No tags')
         return
     for tag in tags:
         tag = tag[1:]
         note_key = LKBRedis.get_new_note_key(message.from_user.id)
-        redis_conn.set(note_key, message.text, ex=SECONDS_PER_WEEK)
+        redis_conn.set(note_key, message.text, ex=SECONDS_PER_DAY)
         notes_set_key = \
             redis_conn.hget(message.from_user.id, tag) \
             or LKBRedis.get_notes_set_key(message.from_user.id, tag)
@@ -76,6 +85,8 @@ def text_handler(message):
     bot.send_message(
         message.from_user.id,
         'Done! You can retrieve list of all tags using /tags command.')
+    logger.info('Success')
 
 if __name__ == '__main__':
-    bot.polling()
+    telebot.logger.setLevel(logging.INFO)
+    bot.polling(none_stop=True)
