@@ -19,6 +19,14 @@ logger.addHandler(logging.StreamHandler(sys.stdout))
 bot = telebot.TeleBot(LKBRedis().get('bot_token'))
 
 
+@bot.message_handler(commands=['start', 'help'])
+def show_help(message):
+    bot.send_message(
+        message.from_user.id,
+        'Send me any text message with hash tag and I will store it for a day. '
+        'You can then retrieve it using the same tag.')
+
+
 @bot.message_handler(commands=['tags'])
 def show_tags_list(message):
     logger.info('Tags command, user_id='.format(message.from_user.id))
@@ -60,12 +68,12 @@ def text_handler(message):
     logger.info('New note, user_id={}'.format(message.from_user.id))
     redis_conn = LKBRedis()
     tags = HASH_TAG_REGEX.findall(message.text)
-    if '#tags' in tags:
+    if '#tags' in tags or '#start' in tags or '#help' in tags:
         bot.send_message(
             message.from_user.id,
-            'Sorry, you cannot use tag #tags, '
-            'because it is reserved for /tags command.')
-        logger.info('#tags tag')
+            'Sorry, you cannot use tags #tags, #help or #start, '
+            'because they are reserved for commands: /tags, /help, /start.')
+        logger.info('Unavailable tags')
         return
     if not tags:
         bot.send_message(
