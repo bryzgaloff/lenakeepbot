@@ -1,2 +1,2 @@
 # lenakeepbot
-Telegram bot to store messages for a week
+Telegram bot to store messages for a day

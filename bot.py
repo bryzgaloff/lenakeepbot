@@ -10,7 +10,7 @@ from lkb_redis import LKBRedis
 
 TAG_EXACT_REGEX = re.compile(r'^[#/]\S+$')
 HASH_TAG_REGEX = re.compile(r'#\S+')
-SECONDS_PER_DAY = 60 * 60 * 24 * 7
+SECONDS_PER_DAY = 60 * 60 * 24
 
 logger = logging.getLogger('LKB')
 logger.setLevel(logging.INFO)
