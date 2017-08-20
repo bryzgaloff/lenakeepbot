@@ -1,3 +1,5 @@
+#!env/bin/python
+
 import re
 
 from telebot import TeleBot
