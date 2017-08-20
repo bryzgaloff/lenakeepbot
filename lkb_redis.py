@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from redis import StrictRedis
 
 __all__ = ('LKBRedis', 'KEY_TEMPLATE')
@@ -75,3 +77,12 @@ class LKBRedis:
                 _decode,
                 super(LKBRedis.__LKBRedis, self).hkeys(
                     KEY_TEMPLATE.format(name)))
+
+    @staticmethod
+    def get_notes_set_key(user_id, tag):
+        return '{user_id}_{tag}'.format(user_id=user_id, tag=tag)
+
+    @staticmethod
+    def get_new_note_key(user_id):
+        return '{user_id}_{timestamp}'.format(
+            user_id=user_id, timestamp=datetime.now().timestamp())
